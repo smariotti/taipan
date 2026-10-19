@@ -1,0 +1,7 @@
+# The original game's disk image and everything extracted from it are
+# copyrighted. They stay on this machine and are never published.
+disk/
+extracted/
+
+__pycache__/
+*.pyc

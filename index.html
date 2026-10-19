@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taipan</title>
+<meta name="description" content="Trade, fight pirates and get rich on the China coast of 1860. A fan remake of a classic Apple II trading game, playable in your browser.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+<style>
+  :root { --bg: #0b0f14; --fg: #d6d6d6; --dim: #8a94a3; --accent: #e3b341; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  h1 { margin: 8px 0 4px; font-size: 1.6rem; letter-spacing: 0.3em; color: var(--accent); }
+  .lede { margin: 0 0 16px; color: var(--dim); }
+  #screen { border: 1px solid #263040; border-radius: 6px; padding: 8px; background: #000;
+    overflow-x: auto; }
+  #loading { padding: 24px; color: var(--dim); font-family: ui-monospace, Consolas, monospace; }
+  details { margin-top: 16px; color: var(--dim); }
+  summary { cursor: pointer; color: var(--fg); }
+  kbd { border: 1px solid #44505f; border-radius: 3px; padding: 0 4px; font-size: 0.9em; }
+  footer { margin-top: 24px; font-size: 0.85rem; color: var(--dim); }
+</style>
+</head>
+<body>
+<main>
+  <h1>TAIPAN</h1>
+  <p class="lede">Hong Kong, 1860. Buy low, sell high, and keep your guns loaded.</p>
+  <div id="screen"><div id="loading">Loading Python in your browser&hellip; (first visit takes a few seconds)</div></div>
+  <details>
+    <summary>How to play</summary>
+    <ul>
+      <li>Click the screen, then type. Single-key answers need no <kbd>Enter</kbd>.</li>
+      <li>Amounts take a number, or <kbd>A</kbd> for all.</li>
+      <li>Trade opium, silk, arms and general cargo between seven ports. Hong Kong has your bank, warehouse and moneylender.</li>
+      <li>In a sea fight, press <kbd>R</kbd> run, <kbd>F</kbd> fight or <kbd>T</kbd> throw cargo at any time. Your order repeats until you change it, and hesitating lets the enemy fire.</li>
+      <li>Reach a net worth of one million and you can retire from Hong Kong.</li>
+    </ul>
+  </details>
+  <footer>A fan remake of a 1982 Apple II trading game, written from scratch in Python and run in your browser with Pyodide.</footer>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+const MODULES = ["__init__", "engine", "console", "battle_screen", "game", "web"];
+
+async function boot() {
+  const pyodide = await loadPyodide();
+  pyodide.FS.mkdirTree("/game/taipan");
+  for (const name of MODULES) {
+    const res = await fetch(`src/taipan/${name}.py`);
+    if (!res.ok) throw new Error(`could not load ${name}.py (${res.status})`);
+    pyodide.FS.writeFile(`/game/taipan/${name}.py`, await res.text());
+  }
+  pyodide.runPython("import sys; sys.path.insert(0, '/game')");
+
+  const host = document.getElementById("screen");
+  host.innerHTML = "";
+  const term = new Terminal({
+    cols: 80, rows: 25, convertEol: true, cursorBlink: true,
+    fontFamily: 'Consolas, "Cascadia Mono", Menlo, monospace', fontSize: 16,
+    theme: { background: "#000000" },
+  });
+  term.open(host);
+  window.term = term;
+  const start = pyodide.pyimport("taipan.web").start;
+  await start(term);
+}
+
+boot().catch(err => {
+  document.getElementById("screen").innerHTML =
+    `<div id="loading">Something went wrong starting the game: ${String(err).replace(/</g, "&lt;")}</div>`;
+  console.error(err);
+});
+</script>
+</body>
+</html>
